@@ -2,29 +2,50 @@
 	<head>
 		<title>Backbone.js sample app</title>
 		<style>
-			#bucketlist {
+			#bucketlist-items {
 				margin: 20px;
 				list-style: none;
 				padding: 0;
 			}
-			#bucketlist li{
+			#bucketlist-items li div{
 				padding:19px 19px 19px 70px;
-				cursor:pointer;
-
 			}
-			.grey{background-color:#f0f0f0;}
+			#bucketlist-items li a{
+				cursor:pointer;
+			}
 			.incomplete{
-				background:url('<?php bloginfo( 'template_directory' ); ?>/img/checkbox_unchecked.png') no-repeat 5px 4px;
+				background-color:blueViolet;
+				color:#FFF;
 			}
 			.complete{
-				background:url('<?php bloginfo( 'template_directory' ); ?>/img/checkbox_checked.png') no-repeat 5px 4px;
+				background-color:green;
+				color:#FFF;
 			}
 		</style>
 	</head>
 	<body>
 		<div id="playground">
-
+			<header><h1>Bucketlista baby!</h1></header>
+			<section>
+				<label for="new-bucketlist">Add to bucketlist</label>
+				<input type="text" id="new-bucketlist" />
+				<input type="submit" id="add-bucketlist" value="add" />
+				<ul id="bucketlist-items"></ul>
+			</section>
+			<footer></footer>
 		</div>
+
+		<script type="text/template" id="bucketlist-template">
+			<div class="<%= status %>">
+				<%= title %> (<a class="checkoff">checkoff</a>) | (<a class="clear">clear</a>)
+			</div>
+		</script>
+
+		<script type="text/template" id="stats-template">
+			<span id="remaining-wishes-count"><strong><%= remaining %></strong> <%= remaining === 1 ? 'wish' : 'wishes' %> left</span>
+			<span id="done-wishes-count"><strong><%= done %></strong> <%= done === 1 ? 'wish' : 'wishes' %> done</span>
+		</script>
+
 		<script src="<?php bloginfo( 'template_directory' ); ?>/js/jquery.min.js"></script>
 		<script src="<?php bloginfo( 'template_directory' ); ?>/js/underscore-min.js"></script>
 		<script src="<?php bloginfo( 'template_directory' ); ?>/js/backbone-min.js"></script>
@@ -34,12 +55,10 @@
 			 * Custom Backbone Sync method
 			 */
 
+			 var app;
+
 			(function($) {
 				Backbone.sync = function(method, model, options) {
-
-					console.log('Backbone.sync() called:', method, model, options);
-					//return false;
-					//console.log( model instanceOf bucketListView );
 
 					var params = _.extend({
 						type: 'POST',
@@ -78,10 +97,10 @@
 			})(jQuery);
 
 			/**
-			 * BucketListItem Model
+			 * Bucketlist Model
 			 */
 
-			var BucketListItem = Backbone.Model.extend({
+			var wish = Backbone.Model.extend({
 
 				defaults: {
 					title: '',
@@ -96,14 +115,16 @@
 				},
 
 				initialize: function(){
-					console.log('initializing BucketListItem model');
+					
+					console.log('initializing wish model');
 
 					/* Add listeners here, when needed */
 
 					this.on('change:status',function(){
 						console.log('Bucketlist\'s status changed');
 					});
-					this.on('add',function(){
+
+					this.on('change',function(){
 						this.save();
 					});
 
@@ -113,18 +134,18 @@
 					});
 				},
 
-				toggleStatus: function(){
-					this.get('status') == 'incomplete' ? this.set({'status':'complete'}) : this.set({'status':'incomplete'});
+				toggle: function(){
+					this.set({
+						'status': this.get('status') == 'incomplete' ? 'complete' : 'incomplete'
+					});
+				},
+
+				clear: function(){
+					console.log('inside model\'s clear func',this);
+					this.destroy();
 				}
 
 			});
-
-			var bucketListItem = new BucketListItem({});
-//			bucketListItem.set({
-//				title: 'Do bungee jumping',
-//				status: 'complete'
-//			});
-
 
 			/*********************************************************************/
 
@@ -132,40 +153,40 @@
 			 * BucketList View
 			 */
 
-			var BucketListView = Backbone.View.extend({
+			var wishView = Backbone.View.extend({
 
-				tagName: 'ul',
-				id: 'bucketlist',
-				className: 'grey',
+				tagName: 'li',
 
-				template: _.template('<li class="bucketListentry <%= status %>"><%= title %></li>'),
+				template: _.template($('#bucketlist-template').html()),
 
 				events: {
-					"click .bucketListentry": 'toggleStatus'
+					'click .checkoff': 'toggle',
+					'click .clear': 'clear'
 				},
 
 				initialize: function(){
-					this.model.on('change',this.render,this);
+					this.model.bind('change',this.render,this);
+					this.model.bind('add',this.render,this);
+					this.model.bind('destroy',this.remove,this);
 				},
 
-				toggleStatus: function(){
-					this.model.toggleStatus();
+				toggle: function(){
+					this.model.toggle();
+				},
+
+				clear: function(){
+					console.log('inside view\'s clear func',this);
+					// pass the call to clear function of model instead of calling the destroy function directly as this gives us the opportunity to do more things when destroying it
+					this.model.clear();
 				},
 
 				render: function(){
+					console.log('rendering',this.model.toJSON());
 					this.$el.html(this.template(this.model.toJSON()));
+					return this; // supports chained calls
 				}
 
 			});
-
-			var bucketListView = new BucketListView({
-				model: bucketListItem
-			});
-
-			bucketListView.render();
-
-			//console.log(bucketListView.el);
-			$('#playground').append(bucketListView.el);
 
 			/*********************************************************************/
 
@@ -174,29 +195,81 @@
 			 */
 
 			var BucketListCollection = Backbone.Collection.extend({
-				model: BucketListItem
+				
+				model: wish,
+
+				done: function(){
+					return this.filter(function(wish){ return wish.get('status') == 'complete' });
+				},
+
+				remaining: function(){
+					return this.without.apply(this, this.done());
+				}
+
 			});
-			var bucketListCollection = new BucketListCollection();
 
-			bucketListCollection.on('add',function(BucketListItem){
-				console.log('Added ' + BucketListItem.get('title') + ' in collection');
-			});
-
-
-//			bucketListCollection.add([
-//				{title: "Do a long Wheelie", status: "complete"},
-//				{title: "Do a stoppie", status: "incomplete"},
-//				{title: "Do BASE jumping", status: "incomplete"}
-//			]);
-//			bucketListCollection.add(bucketListItem);
-
-			//bucketListCollection.url = '/bucketlistitems';
-			bucketListCollection.fetch(); // will overwrite the collection contents
+			var wishes = new BucketListCollection();
 
 			/*********************************************************************/
 
+			/**
+			 * Bucketlist top level View
+			 */
 
+			var Appview = Backbone.View.extend({
 
+				el: $('#playground'),
+
+				statsTemplate: _.template( $('#stats-template').html() ),
+
+				events: {
+					'click #add-bucketlist': 'create'
+				},
+
+				initialize: function(){
+
+					this.input = $('#new-bucketlist');
+					this.footer = $('#playground footer');
+
+					wishes.bind('add',this.addOne,this);
+					wishes.bind('reset',this.addAll,this);
+					wishes.bind('all',this.render,this);
+
+					wishes.fetch();
+				},
+
+				render: function(){
+					var done = wishes.done().length;
+					var remaining = wishes.remaining().length;
+
+					this.footer.html(this.statsTemplate({
+						done: done,
+						remaining: remaining
+					}));
+				},
+
+				addOne: function(wish){
+					var view = new wishView({
+						model: wish
+					});
+
+					this.$("#bucketlist-items").append(view.render().el);
+				},
+
+				addAll: function(){
+					wishes.each(this.addOne);
+				},
+
+				create: function(){
+					wishes.create({ title: this.input.val() });
+					this.input.val('');
+				}
+
+			});
+
+			$(document).ready(function(){
+				var appview = new Appview();
+			});
 
 		</script>
 	</body>

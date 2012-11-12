@@ -20,6 +20,7 @@ function create_post_type() {
  * 	Ajax handler for Backbone.js
  */
 add_action( 'wp_ajax_backbone', 'bucketlist_ajax_handler' );
+add_action( 'wp_ajax_nopriv_backbone', 'bucketlist_ajax_handler' );
 
 function bucketlist_ajax_handler() {
 
@@ -134,6 +135,9 @@ function get_bucketlist_item( $id ) {
 
 function get_bucketlist( $args ) {
 
+	$args['numberposts'] = -1;
+	$args['orderby'] = 'ID';
+
 	$posts = get_posts( $args );
 	$collect = array();
 	foreach ( $posts as $post ) {
@@ -143,5 +147,6 @@ function get_bucketlist( $args ) {
 			'status' => get_post_meta( $post->ID, 'status', true )
 		);
 	}
+	$collect = array_reverse( $collect );
 	return $collect;
 }
