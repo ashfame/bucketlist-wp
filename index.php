@@ -7,19 +7,19 @@
 				list-style: none;
 				padding: 0;
 			}
-			#bucketlist-items li div{
-				padding:19px 19px 19px 70px;
+			#bucketlist-items li div {
+				padding: 19px 19px 19px 70px;
 			}
-			#bucketlist-items li a{
-				cursor:pointer;
+			#bucketlist-items li a {
+				cursor: pointer;
 			}
-			.incomplete{
-				background-color:blueViolet;
-				color:#FFF;
+			.incomplete {
+				background-color: blueViolet;
+				color: #FFF;
 			}
-			.complete{
-				background-color:green;
-				color:#FFF;
+			.complete {
+				background-color: green;
+				color: #FFF;
 			}
 		</style>
 	</head>
@@ -44,6 +44,7 @@
 		<script type="text/template" id="stats-template">
 			<span id="remaining-wishes-count"><strong><%= remaining %></strong> <%= remaining === 1 ? 'wish' : 'wishes' %> left</span>
 			<span id="done-wishes-count"><strong><%= done %></strong> <%= done === 1 ? 'wish' : 'wishes' %> done</span>
+			<span id="all-wishes-count"><strong><%= all %></strong> <%= all === 1 ? 'wish' : 'wishes' %> total</span>
 		</script>
 
 		<script src="<?php bloginfo( 'template_directory' ); ?>/js/jquery.min.js"></script>
@@ -115,7 +116,7 @@
 				},
 
 				initialize: function(){
-					
+
 					console.log('initializing wish model');
 
 					/* Add listeners here, when needed */
@@ -195,7 +196,7 @@
 			 */
 
 			var BucketListCollection = Backbone.Collection.extend({
-				
+
 				model: wish,
 
 				done: function(){
@@ -223,13 +224,17 @@
 				statsTemplate: _.template( $('#stats-template').html() ),
 
 				events: {
-					'click #add-bucketlist': 'create'
+					'click #add-bucketlist': 'create',
+					'click #remaining-wishes-count': 'remainingWishesRoute',
+					'click #done-wishes-count': 'doneWishesRoute',
+					'click #all-wishes-count': 'allWishesRoute'
 				},
 
 				initialize: function(){
 
 					this.input = $('#new-bucketlist');
 					this.footer = $('#playground footer');
+					this.items = $('#bucketlist-items');
 
 					wishes.bind('add',this.addOne,this);
 					wishes.bind('reset',this.addAll,this);
@@ -244,7 +249,8 @@
 
 					this.footer.html(this.statsTemplate({
 						done: done,
-						remaining: remaining
+						remaining: remaining,
+						all: done + remaining
 					}));
 				},
 
@@ -263,9 +269,58 @@
 				create: function(){
 					wishes.create({ title: this.input.val() });
 					this.input.val('');
+				},
+
+				remainingWishesRoute: function(){
+					wishRouter.navigate('remaining',{trigger: true});
+					this.items.find('.incomplete').parents('li').show();
+					this.items.find('.complete').parents('li').hide();
+				},
+
+				doneWishesRoute: function(){
+					wishRouter.navigate('done',{trigger: true});
+					this.items.find('.complete').parents('li').show();
+					this.items.find('.incomplete').parents('li').hide();
+				},
+
+				allWishesRoute: function(){
+					wishRouter.navigate('',{trigger: true});
+					this.items.find('li').show();
 				}
 
 			});
+
+			/*********************************************************************/
+
+			/**
+			 * Bucketlist top level View
+			 */
+
+			var BucketListRouter = Backbone.Router.extend({
+
+				routes: {
+					'': 'all',
+					'done': 'done',
+					'remaining': 'remaining'
+				},
+
+				all: function(){
+					console.log('showing all route');
+				},
+
+				done: function(){
+					console.log('showing done route');
+				},
+
+				remaining: function(){
+					console.log('showing remaining route');
+				}
+
+			});
+
+			var wishRouter = new BucketListRouter();
+
+			Backbone.history.start();
 
 			$(document).ready(function(){
 				var appview = new Appview();
