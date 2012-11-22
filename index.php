@@ -325,7 +325,7 @@
 			blapp.WishRouter = new blapp.BucketListRouter();
 
 			$(document).ready(function(){
-				Backbone.history.start();
+				Backbone.history.start({ pushState: true });
 				blapp.appview = new blapp.AppView();
 			});
 
