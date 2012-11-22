@@ -56,8 +56,6 @@
 			 * Custom Backbone Sync method
 			 */
 
-			 var app;
-
 			(function($) {
 				Backbone.sync = function(method, model, options) {
 
@@ -97,11 +95,13 @@
 
 			})(jQuery);
 
+			var blapp = {};
+
 			/**
 			 * Bucketlist Model
 			 */
 
-			var wish = Backbone.Model.extend({
+			blapp.Wish = Backbone.Model.extend({
 
 				defaults: {
 					title: '',
@@ -154,7 +154,7 @@
 			 * BucketList View
 			 */
 
-			var wishView = Backbone.View.extend({
+			blapp.WishView = Backbone.View.extend({
 
 				tagName: 'li',
 
@@ -195,21 +195,25 @@
 			 * BucketList Collection
 			 */
 
-			var BucketListCollection = Backbone.Collection.extend({
+			(function(){
 
-				model: wish,
+				var BucketListCollection = Backbone.Collection.extend({
 
-				done: function(){
-					return this.filter(function(wish){ return wish.get('status') == 'complete' });
-				},
+					model: blapp.Wish,
 
-				remaining: function(){
-					return this.without.apply(this, this.done());
-				}
+					done: function(){
+						return this.filter(function(wish){ return wish.get('status') == 'complete' });
+					},
 
-			});
+					remaining: function(){
+						return this.without.apply(this, this.done());
+					}
 
-			var wishes = new BucketListCollection();
+				});
+
+				blapp.Wishes = new BucketListCollection();
+
+			})();
 
 			/*********************************************************************/
 
@@ -217,7 +221,7 @@
 			 * Bucketlist top level View
 			 */
 
-			var Appview = Backbone.View.extend({
+			blapp.AppView = Backbone.View.extend({
 
 				el: $('#playground'),
 
@@ -236,16 +240,16 @@
 					this.footer = $('#playground footer');
 					this.items = $('#bucketlist-items');
 
-					wishes.bind('add',this.addOne,this);
-					wishes.bind('reset',this.addAll,this);
-					wishes.bind('all',this.render,this);
+					blapp.Wishes.bind('add',this.addOne,this);
+					blapp.Wishes.bind('reset',this.addAll,this);
+					blapp.Wishes.bind('all',this.render,this);
 
-					wishes.fetch();
+					blapp.Wishes.fetch();
 				},
 
 				render: function(){
-					var done = wishes.done().length;
-					var remaining = wishes.remaining().length;
+					var done = blapp.Wishes.done().length;
+					var remaining = blapp.Wishes.remaining().length;
 
 					this.footer.html(this.statsTemplate({
 						done: done,
@@ -255,7 +259,7 @@
 				},
 
 				addOne: function(wish){
-					var view = new wishView({
+					var view = new blapp.WishView({
 						model: wish
 					});
 
@@ -263,28 +267,28 @@
 				},
 
 				addAll: function(){
-					wishes.each(this.addOne);
+					blapp.Wishes.each(this.addOne);
 				},
 
 				create: function(){
-					wishes.create({ title: this.input.val() });
+					blapp.Wishes.create({ title: this.input.val() });
 					this.input.val('');
 				},
 
 				remainingWishesRoute: function(){
-					wishRouter.navigate('remaining',{trigger: true});
+					blapp.WishRouter.navigate('remaining',{trigger: true});
 					this.items.find('.incomplete').parents('li').show();
 					this.items.find('.complete').parents('li').hide();
 				},
 
 				doneWishesRoute: function(){
-					wishRouter.navigate('done',{trigger: true});
+					blapp.WishRouter.navigate('done',{trigger: true});
 					this.items.find('.complete').parents('li').show();
 					this.items.find('.incomplete').parents('li').hide();
 				},
 
 				allWishesRoute: function(){
-					wishRouter.navigate('',{trigger: true});
+					blapp.WishRouter.navigate('',{trigger: true});
 					this.items.find('li').show();
 				}
 
@@ -296,7 +300,7 @@
 			 * Bucketlist top level View
 			 */
 
-			var BucketListRouter = Backbone.Router.extend({
+			blapp.BucketListRouter = Backbone.Router.extend({
 
 				routes: {
 					'': 'all',
@@ -318,12 +322,11 @@
 
 			});
 
-			var wishRouter = new BucketListRouter();
-
-			Backbone.history.start();
+			blapp.WishRouter = new blapp.BucketListRouter();
 
 			$(document).ready(function(){
-				var appview = new Appview();
+				Backbone.history.start();
+				blapp.appview = new blapp.AppView();
 			});
 
 		</script>
